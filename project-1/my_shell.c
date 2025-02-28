@@ -23,10 +23,7 @@ void add_to_history(const char *command)
 
     strcpy(history[index % HISTORY_COUNT], command);
     index++;
-    if (history_count < HISTORY_COUNT)
-    {
-        history_count++;
-    }
+    history_count++;
 }
 
 // Handle `Ctrl+C` (SIGINT) - Print history instead of exiting
@@ -36,9 +33,12 @@ void handle_SIGINT(int sig)
 
     char buffer[1024];
     int length = 0;
-    for (int i = 0; i < history_count; i++)
+
+    // Calculate where to start printing
+    int start_index = (history_count > HISTORY_COUNT) ? (history_count - HISTORY_COUNT) : 0;
+    for (int i = start_index; i < history_count; i++)
     {
-        length += snprintf(buffer + length, sizeof(buffer) - length, "%d. %s\n", i + 1, history[i]);
+        length += snprintf(buffer + length, sizeof(buffer) - length, "%d. %s\n", i + 1, history[i % HISTORY_COUNT]);
     }
     write(STDOUT_FILENO, buffer, length);
 
@@ -129,10 +129,12 @@ int main(void)
         // Handle the `history` command manually
         if (strcmp(args[0], "history") == 0)
         {
-            printf(">>> Command history:\n");
-            for (int i = 0; i < history_count; i++)
+            printf(">>> Last 10 Commands:\n");
+
+            int start_index = (history_count > HISTORY_COUNT) ? (history_count - HISTORY_COUNT) : 0;
+            for (int i = start_index; i < history_count; i++)
             {
-                printf("%d. %s\n", i + 1, history[i]);
+                printf("%d. %s\n", i + 1, history[i % HISTORY_COUNT]);
             }
             continue; // Skip execution since we already handled history
         }
@@ -154,12 +156,7 @@ int main(void)
         else if (pid == 0) // Child process
         {
             // Custom debug message to confirm my code
-            printf(">>> DEBUG <<< Executing command: %s\n", args[0]);
-            for (int j = 0; args[j] != NULL; j++)
-            {
-                printf(">>> DEBUG <<< args[%d] = %s\n", j, args[j]);
-            }
-            fflush(stdout); // Ensure debug prints before execvp
+            printf("Executing command: %s\n", args[0]);
 
             if (execvp(args[0], args) == -1)
             {
