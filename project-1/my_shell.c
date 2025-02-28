@@ -11,22 +11,20 @@
 #define MAX_LINE 80
 #define HISTORY_COUNT 10
 
-char history[HISTORY_COUNT][MAX_LINE]; // Stores the last 10 commands
-int history_count = 0;                 // Number of stored commands
+char history[HISTORY_COUNT][MAX_LINE];
+int history_count = 0;
 
-// Add command to history
 void add_to_history(const char *command)
 {
     static int index = 0;
     if (strlen(command) == 0)
-        return; // Don't store empty commands
+        return;
 
     strcpy(history[index % HISTORY_COUNT], command);
     index++;
     history_count++;
 }
 
-// Handle `Ctrl+C` (SIGINT) - Print history instead of exiting
 void handle_SIGINT(int sig)
 {
     write(STDOUT_FILENO, "\n>>> Ctrl+C detected! Showing command history:\n", 48);
@@ -34,7 +32,6 @@ void handle_SIGINT(int sig)
     char buffer[1024];
     int length = 0;
 
-    // Calculate where to start printing
     int start_index = (history_count > HISTORY_COUNT) ? (history_count - HISTORY_COUNT) : 0;
     for (int i = start_index; i < history_count; i++)
     {
@@ -42,21 +39,17 @@ void handle_SIGINT(int sig)
     }
     write(STDOUT_FILENO, buffer, length);
 
-    // Flush stdin to prevent issues
     tcflush(STDIN_FILENO, TCIFLUSH);
 
-    // Restore shell prompt
     write(STDOUT_FILENO, "fabio :) ", 9);
     fflush(stdout);
 }
 
 int main(void)
 {
-    char *args[MAX_LINE / 2 + 1]; // Command arguments
-    char inputBuffer[MAX_LINE];   // User input buffer
+    char *args[MAX_LINE / 2 + 1];
+    char inputBuffer[MAX_LINE];
     int should_run = 1;
-
-    // Register SIGINT handler using `sigaction()`
     struct sigaction sigIntHandler;
     sigIntHandler.sa_handler = handle_SIGINT;
     sigemptyset(&sigIntHandler.sa_mask);
@@ -71,7 +64,7 @@ int main(void)
         if (fgets(inputBuffer, MAX_LINE, stdin) == NULL)
         {
             if (feof(stdin))
-                break; // Handle Ctrl+D (EOF)
+                break;
             clearerr(stdin);
             continue;
         }
@@ -80,16 +73,12 @@ int main(void)
 
         if (strlen(inputBuffer) == 0)
             continue;
-
-        // Exit shell
         if (strcmp(inputBuffer, "exit") == 0)
         {
             printf(">>> Exiting shell...\n");
             should_run = 0;
             continue;
         }
-
-        // Handle !! (repeat last command)
         if (strcmp(inputBuffer, "!!") == 0)
         {
             if (history_count == 0)
@@ -100,7 +89,6 @@ int main(void)
             strcpy(inputBuffer, history[(history_count - 1) % HISTORY_COUNT]);
             printf(">>> Executing last command: %s\n", inputBuffer);
         }
-        // Handle !N (repeat Nth command)
         else if (inputBuffer[0] == '!' && isdigit(inputBuffer[1]))
         {
             int command_number = atoi(&inputBuffer[1]);
@@ -112,11 +100,8 @@ int main(void)
             strcpy(inputBuffer, history[(command_number - 1) % HISTORY_COUNT]);
             printf(">>> Executing command %d: %s\n", command_number, inputBuffer);
         }
-
-        // Add command to history
         add_to_history(inputBuffer);
 
-        // Tokenize input for execvp
         int i = 0;
         char *token = strtok(inputBuffer, " ");
         while (token != NULL)
@@ -125,8 +110,6 @@ int main(void)
             token = strtok(NULL, " ");
         }
         args[i] = NULL;
-
-        // Handle the `history` command manually
         if (strcmp(args[0], "history") == 0)
         {
             printf(">>> Last 10 Commands:\n");
@@ -136,26 +119,21 @@ int main(void)
             {
                 printf("%d. %s\n", i + 1, history[i % HISTORY_COUNT]);
             }
-            continue; // Skip execution since we already handled history
+            continue;
         }
-
-        // Check if command runs in background (ends with `&`)
         int run_in_background = (i > 0 && strcmp(args[i - 1], "&") == 0);
         if (run_in_background)
         {
-            args[i - 1] = NULL; // Remove `&` from args
+            args[i - 1] = NULL;
         }
-
-        // Fork a child process to execute the command
         pid_t pid = fork();
         if (pid < 0)
         {
             perror(">>> Fork failed");
             exit(1);
         }
-        else if (pid == 0) // Child process
+        else if (pid == 0)
         {
-            // Custom debug message to confirm my code
             printf("Executing command: %s\n", args[0]);
 
             if (execvp(args[0], args) == -1)
@@ -164,11 +142,11 @@ int main(void)
             }
             exit(1);
         }
-        else // Parent process
+        else
         {
             if (!run_in_background)
             {
-                wait(NULL); // Wait for child to complete if not running in background
+                wait(NULL);
             }
         }
     }
