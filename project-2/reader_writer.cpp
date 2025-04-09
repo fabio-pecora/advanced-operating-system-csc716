@@ -4,67 +4,67 @@
 #include <unistd.h>
 #include <cstdlib>
 #include <ctime>
+#include <vector>
 
 using namespace std;
 
-// Maximums
-const int MAX_READERS = 9;
-const int MAX_WRITERS = 3;
-
-// Global state
+// Shared state
 int readCount = 0;
-sem_t mutex;    // to protect readCount
-sem_t writeSem; // to block writers or readers when a writer is writing
+sem_t mutex;
+sem_t writeSem;
 
-// Simulation duration
-int runtimeSeconds;
+// Track all IDs for cleanup
+vector<int *> thread_ids;
 
-// Reader thread function
+// Reader function
 void *reader(void *arg)
 {
     int id = *((int *)arg);
+    cout << "[DEBUG] Reader thread (" << id << ") started." << endl;
+
     while (true)
     {
-        usleep(rand() % 1001 * 1000); // wait before accessing (0-1000ms)
+        usleep(rand() % 1001 * 1000);
 
-        // Entry section
         sem_wait(&mutex);
         readCount++;
         if (readCount == 1)
         {
-            sem_wait(&writeSem); // first reader locks writers out
+            sem_wait(&writeSem);
         }
         sem_post(&mutex);
 
-        // Critical section
         cout << "File is read by reader thread (" << id << ")" << endl;
-        usleep(rand() % 10001 * 1000); // access file (0-10000ms)
+        usleep(rand() % 10001 * 1000);
 
-        // Exit section
         sem_wait(&mutex);
         readCount--;
         if (readCount == 0)
         {
-            sem_post(&writeSem); // last reader allows writers back in
+            sem_post(&writeSem);
         }
         sem_post(&mutex);
     }
+
     return nullptr;
 }
 
-// Writer thread function
+// Writer function
 void *writer(void *arg)
 {
     int id = *((int *)arg);
+    cout << "[DEBUG] Writer thread (" << id << ") started." << endl;
+
     while (true)
     {
-        usleep(rand() % 1001 * 1000); // wait before accessing (0-1000ms)
+        usleep(rand() % 1001 * 1000);
 
-        sem_wait(&writeSem); // exclusive access
+        sem_wait(&writeSem);
         cout << "File is written by writer thread (" << id << ")" << endl;
-        usleep(rand() % 10001 * 1000); // access file (0-10000ms)
+        usleep(rand() % 10001 * 1000);
         sem_post(&writeSem);
     }
+
     return nullptr;
 }
 
@@ -72,35 +72,74 @@ int main()
 {
     srand(time(nullptr));
 
-    // Input: runtime, number of readers, number of writers
-    int numReaders, numWriters;
+    int runtimeSeconds, numReaders, numWriters;
     cout << "Enter runtime (sec), number of readers, number of writers: ";
     cin >> runtimeSeconds >> numReaders >> numWriters;
 
-    // Init semaphores
+    if (numReaders < 1 || numReaders > 9 || numWriters < 1 || numWriters > 9)
+    {
+        cerr << "Error: Readers and Writers must be between 1 and 9." << endl;
+        return 1;
+    }
+
+    pthread_t *readers = new pthread_t[numReaders];
+    pthread_t *writers = new pthread_t[numWriters];
+
     sem_init(&mutex, 0, 1);
     sem_init(&writeSem, 0, 1);
 
-    // Create threads
-    pthread_t readers[MAX_READERS], writers[MAX_WRITERS];
-    int ids[MAX_READERS > MAX_WRITERS ? MAX_READERS : MAX_WRITERS];
-
-    for (int i = 0; i < max(numReaders, numWriters); i++)
+    // Create reader threads
+    for (int i = 0; i < numReaders; i++)
     {
-        ids[i] = i + 1;
+        int *id = new int(i + 1);
+        thread_ids.push_back(id); // save pointer for cleanup
+        if (pthread_create(&readers[i], nullptr, reader, id) != 0)
+        {
+            cerr << "Failed to create reader thread " << *id << endl;
+        }
+    }
+
+    // Create writer threads
+    for (int i = 0; i < numWriters; i++)
+    {
+        int *id = new int(i + 1);
+        thread_ids.push_back(id); // save pointer for cleanup
+        if (pthread_create(&writers[i], nullptr, writer, id) != 0)
+        {
+            cerr << "Failed to create writer thread " << *id << endl;
+        }
+    }
+
+    // Run the simulation
+    sleep(runtimeSeconds);
+    cout << "Time's up! Simulation ending." << endl;
+
+    for (int i = 0; i < numReaders; i++)
+    {
+        pthread_cancel(readers[i]);
+    }
+    for (int i = 0; i < numWriters; i++)
+    {
+        pthread_cancel(writers[i]);
     }
 
     for (int i = 0; i < numReaders; i++)
     {
-        pthread_create(&readers[i], nullptr, reader, &ids[i]);
+        pthread_join(readers[i], nullptr);
     }
     for (int i = 0; i < numWriters; i++)
     {
-        pthread_create(&writers[i], nullptr, writer, &ids[i]);
+        pthread_join(writers[i], nullptr);
     }
 
-    sleep(runtimeSeconds); // Run simulation
+    // Clean up
+    for (int *ptr : thread_ids)
+    {
+        delete ptr;
+    }
 
-    cout << "Time's up! Simulation ending.\n";
-    exit(0); // End simulation
+    delete[] readers;
+    delete[] writers;
+
+    return 0;
 }
