@@ -1,0 +1,41 @@
+Project: Multithreaded Reader-Writer Problem
+
+Authors: Fabio Pecora & Abayomi Shosilva
+Language: C++ (compiled with g++ and POSIX pthreads)
+
+Files:
+- reader_writer.cpp             -> Semaphore-based solution
+- reader_writer_global.cpp      -> Global variable-based solution with spinlock
+- reader_writer_peterson.cpp    -> Peterson’s Algorithm (1 reader, 1 writer only)
+- Makefile                      -> Compiles all implementations
+- report.txt or report.pdf      -> Project write-up with implementation discussion
+- test_output_semaphore.txt     -> Sample output from semaphore version
+- test_output_global.txt        -> Sample output from global version
+- test_output_peterson.txt      -> Sample output from Peterson’s version
+
+Compilation Instructions:
+Run the following command in the terminal:
+    make
+
+This compiles all three versions:
+- ./reader_writer (semaphore version)
+- ./reader_writer_global
+- ./reader_writer_peterson
+
+Execution Instructions:
+1. Semaphore / Global have the same input format:
+    ./reader_writer
+    ./reader_writer_global
+
+     Input format: <runtime_in_seconds> <#readers> <#writers>
+     Example: 30 3 2
+
+2. Peterson’s:
+    ./reader_writer_peterson
+
+     Input format: <runtime_in_seconds> only
+     Supports only 1 reader and 1 writer (by design)
+
+Cleaning Binaries:
+To remove all compiled executables, run:
+    make clean

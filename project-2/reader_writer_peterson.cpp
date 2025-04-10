@@ -5,26 +5,23 @@
 #include <ctime>
 using namespace std;
 
-// Peterson's Algorithm variables
 volatile bool flag[2] = {false, false};
 volatile int turn = 0;
+volatile bool done = false;
 
-// Printing lock (for clean output)
 pthread_mutex_t printLock = PTHREAD_MUTEX_INITIALIZER;
 
-// Peterson’s lock and unlock
 void peterson_lock(int self) {
     int other = 1 - self;
     flag[self] = true;
     turn = other;
-    while (flag[other] && turn == other); // busy wait
+    while (flag[other] && turn == other);
 }
 
 void peterson_unlock(int self) {
     flag[self] = false;
 }
 
-// Thread functions
 void* reader(void* arg) {
     int id = *((int*)arg);
     delete (int*)arg;
@@ -33,17 +30,14 @@ void* reader(void* arg) {
     cout << "[DEBUG] Reader thread (" << id << ") started.\n";
     pthread_mutex_unlock(&printLock);
 
-    while (true) {
+    while (!done) {
         usleep(rand() % 1001 * 1000);
 
-        peterson_lock(0);  // reader = 0
-
+        peterson_lock(0);
         pthread_mutex_lock(&printLock);
         cout << "File is read by reader thread (" << id << ")\n";
         pthread_mutex_unlock(&printLock);
-
-        usleep(rand() % 10001 * 1000); // simulate read
-
+        usleep(rand() % 10001 * 1000);
         peterson_unlock(0);
     }
 
@@ -58,17 +52,14 @@ void* writer(void* arg) {
     cout << "[DEBUG] Writer thread (" << id << ") started.\n";
     pthread_mutex_unlock(&printLock);
 
-    while (true) {
+    while (!done) {
         usleep(rand() % 1001 * 1000);
 
-        peterson_lock(1); // writer = 1
-
+        peterson_lock(1);
         pthread_mutex_lock(&printLock);
         cout << "File is written by writer thread (" << id << ")\n";
         pthread_mutex_unlock(&printLock);
-
-        usleep(rand() % 10001 * 1000); // simulate write
-
+        usleep(rand() % 10001 * 1000);
         peterson_unlock(1);
     }
 
@@ -90,13 +81,12 @@ int main() {
     pthread_create(&writerThread, nullptr, writer, wID);
 
     sleep(runtimeSeconds);
+    done = true;
+    usleep(500000); // allow final prints
 
     pthread_mutex_lock(&printLock);
     cout << "Time's up! Simulation ending.\n";
     pthread_mutex_unlock(&printLock);
-
-    pthread_cancel(readerThread);
-    pthread_cancel(writerThread);
 
     pthread_join(readerThread, nullptr);
     pthread_join(writerThread, nullptr);

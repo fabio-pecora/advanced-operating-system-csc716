@@ -1,0 +1,8 @@
+Enter runtime (sec): [DEBUG] Reader thread (1) started.
+[DEBUG] Writer thread (1) started.
+File is read by reader thread (1)
+File is written by writer thread (1)
+File is read by reader thread (1)
+File is written by writer thread (1)
+Time's up! Simulation ending.
+File is read by reader thread (1)

@@ -1,0 +1,13 @@
+Enter runtime (sec), number of readers, number of writers: [DEBUG] Reader thread (1) started.
+[DEBUG] Reader thread (3) started.
+[DEBUG] Writer thread (2) started.
+[DEBUG] Writer thread (1) started.
+[DEBUG] Reader thread (2) started.
+File is written by writer thread (2)
+File is read by reader thread (2)
+File is read by reader thread (3)
+File is read by reader thread (1)
+File is read by reader thread (1)
+File is read by reader thread (2)
+File is read by reader thread (3)
+Time's up! Simulation ending.
